@@ -1,0 +1,217 @@
+<!DOCTYPE html><html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerntex - منصة اللاعبين</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #000;
+      color: #fff;
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+    header {
+      background: #121212;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #222;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    .logo {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #fff;
+    }
+    .discord-banner {
+      background: #3897f0;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    .feed {
+      max-width: 600px;
+      margin: 20px auto 100px;
+      padding: 0 12px;
+    }
+    .post {
+      background: #121212;
+      border: 1px solid #222;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      overflow: hidden;
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+    }
+    .post-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #3897f0;
+    }
+    .username {
+      font-weight: bold;
+      font-size: 0.95rem;
+      color: #fff;
+    }
+    .follow-btn {
+      font-size: 0.8rem;
+      padding: 5px 14px;
+      background-color: #3897f0;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+    }
+    .post-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-top: 1px solid #222;
+    }
+    .post-icons {
+      display: flex;
+      gap: 18px;
+      font-size: 1.4rem;
+    }
+    .post-icons i {
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .post-icons i:hover {
+      transform: scale(1.2);
+      color: #3897f0;
+    }
+    .post-content {
+      padding: 0 14px 16px;
+      font-size: 0.9rem;
+      color: #ddd;
+    }
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #121212;
+      border-top: 1px solid #222;
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0;
+      z-index: 1000;
+    }
+    .bottom-nav i {
+      font-size: 1.6rem;
+      color: #888;
+    }
+    .bottom-nav i:hover {
+      color: #fff;
+    }
+    footer {
+      text-align: center;
+      padding: 40px 20px;
+      font-size: 0.8rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body><header>
+  <div class="logo">Gerntex</div>
+  <a class="discord-banner" href="https://discord.gg/grtex" target="_blank">اضغط هنا للدخول</a>
+</header><div class="feed" id="feed"></div><div class="bottom-nav">
+  <i class="fa-solid fa-house"></i>
+  <i class="fa-regular fa-compass"></i>
+  <i class="fa-regular fa-square-plus"></i>
+  <i class="fa-regular fa-heart"></i>
+  <i class="fa-regular fa-user"></i>
+</div><footer>
+  جميع الحقوق محفوظة © Gerntex 2025
+</footer><script>
+  const posts = [
+    {
+      user: "MrBeast",
+      avatar: "https://upload.wikimedia.org/wikipedia/commons/9/9b/MrBeast_2021.png",
+      text: "تخيل تكسب 1000$ وأنت تلعب؟ انضم لنا!",
+      id: "mrbeast"
+    },
+    {
+      user: "IShowSpeed",
+      avatar: "https://upload.wikimedia.org/wikipedia/commons/1/1e/IShowSpeed_2023.jpg",
+      text: "الجنون بدأ في سيرفر Gerntex 😂🔥",
+      id: "speed"
+    },
+    {
+      user: "Dream",
+      avatar: "https://upload.wikimedia.org/wikipedia/en/0/0e/Dream_%28YouTuber%29.png",
+      text: "مود النجاة صار أصعب من أي وقت!",
+      id: "dream"
+    },
+    {
+      user: "Technoblade",
+      avatar: "https://upload.wikimedia.org/wikipedia/en/thumb/d/d2/Technoblade_pfp.jpg/220px-Technoblade_pfp.jpg",
+      text: "أفضل قتالات PvP تبدأ الآن! 🗡️",
+      id: "techno"
+    },
+    {
+      user: "Gerntex_Admin",
+      avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png",
+      text: "ابدأ مشوارك معنا اليوم! سيرفر مفتوح للجميع!",
+      id: "admin"
+    }
+  ];
+
+  const feed = document.getElementById("feed");
+
+  posts.forEach(post => {
+    const postHTML = `
+      <div class="post">
+        <div class="post-header">
+          <div class="user-info">
+            <a href="#${post.id}">
+              <img class="avatar" src="${post.avatar}" alt="${post.user}" />
+            </a>
+            <a href="#${post.id}" class="username">${post.user}</a>
+          </div>
+          <button class="follow-btn">متابعة</button>
+        </div>
+        <div class="post-content">
+          ${post.text}
+        </div>
+        <div class="post-actions">
+          <div class="post-icons">
+            <i class="fa-regular fa-heart"></i>
+            <i class="fa-regular fa-comment"></i>
+            <i class="fa-regular fa-paper-plane"></i>
+          </div>
+        </div>
+      </div>
+    `;
+    feed.innerHTML += postHTML;
+  });
+</script></body>
+</html>
