@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0ru - التحدي النهائي</title>
+<style>
+body {
+  margin: 0; font-family: "Tajawal", sans-serif; background: linear-gradient(135deg,#0a0a0a,#1a1a1a); color:#fff; overflow-x:hidden;
+}
+h1,h2,h3,p{margin:0;padding:0;}
+button{cursor:pointer;}
+.hidden{display:none;}
+
+/* البطاقة المركزية */
+.card{background:#1c1c1c;border-radius:24px;padding:20px;margin:20px auto;max-width:360px;box-shadow:0 10px 40px rgba(0,0,0,0.3);text-align:center;transition:0.3s;}
+.card:hover{box-shadow:0 15px 50px rgba(255,127,80,0.5);}
+
+/* حقول الإدخال */
+input{width:90%;padding:12px;margin:8px 0;border-radius:12px;border:1px solid #333;background:#222;color:#fff;text-align:center;}
+input:focus{border-color:#ff7f50;outline:none;}
+
+/* الأزرار */
+button{width:90%;padding:12px;margin:10px 0;border-radius:20px;border:none;background:linear-gradient(90deg,#ff7f50,#ff4500);color:white;font-weight:600;font-size:1em;transition:0.3s;}
+button:hover{background:linear-gradient(90deg,#ff4500,#ff7f50);transform:translateY(-2px);}
+
+/* العداد الرقمي */
+#timer{font-size:48px;margin:15px 0;}
+
+/* الساعة الدائرية */
+#circleContainer{position:relative;width:150px;height:150px;margin:20px auto;}
+#circle{width:100%;height:100%;border-radius:50%;border:8px solid #444;position:absolute;top:0;left:0;}
+#progress{width:100%;height:100%;border-radius:50%;border:8px solid #ff7f50;clip: rect(0px,150px,150px,75px);transform:rotate(0deg);position:absolute;top:0;left:0;transition:0.3s linear;}
+
+/* التوب اليومي */
+#topUsers{margin-top:20px;}
+.topCard{background:#2a2a2a;border-radius:12px;padding:10px;margin:8px 0;box-shadow:0 5px 15px rgba(0,0,0,0.2);}
+
+/* صندوق التحديات */
+#inbox{margin-top:20px;}
+.inboxItem{background:#2a2a2a;padding:8px;margin:6px 0;border-radius:10px;display:flex;justify-content:space-between;align-items:center;}
+.inboxItem button{width:auto;padding:6px 12px;font-size:0.9em;}
+</style>
+</head>
+<body>
+
+<!-- تسجيل الدخول -->
+<div id="loginSection" class="card">
+<h2>🎯 سجل دخولك</h2>
+<input type="text" id="usernameInput" placeholder="اسم المستخدم (إنجليزي)">
+<input type="email" id="emailInput" placeholder="البريد الإلكتروني">
+<input type="password" id="passwordInput" placeholder="كلمة المرور">
+<button onclick="loginOrRegister()">ابدأ</button>
+<p id="loginMsg"></p>
+</div>
+
+<!-- لوحة التحكم -->
+<div id="dashboardSection" class="card hidden">
+<h2>👋 أهلاً <span id="userDisplay"></span></h2>
+<p>نقاطك: <span id="pointsDisplay">0</span></p>
+
+<!-- ساعة دائرية + عداد -->
+<div id="circleContainer">
+<div id="circle"></div>
+<div id="progress"></div>
+</div>
+<div id="timer">0:00</div>
+<button onclick="startSession()">ابدأ التحدي</button>
+<button onclick="stopSession()">أوقف</button>
+
+<!-- التوب اليومي -->
+<div id="topUsers"><h3>التوب اليومي</h3><div id="topList"></div></div>
+
+<!-- صندوق التحديات -->
+<div id="inbox"><h3>تحديات الأصدقاء</h3><div id="inboxList"></div>
+<input type="text" id="friendInput" placeholder="أدخل اسم صديق"><button onclick="sendChallenge()">إرسال تحدي</button>
+</div>
+</div>
+
+<!-- أصوات -->
+<audio id="pointSound"><source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" type="audio/ogg"></audio>
+
+<script type="module">
+// Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getDatabase, ref, set, get, update, push, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+const firebaseConfig = {
+apiKey:"AIzaSyChU5K38X_XVieUtJg1xtaL67ZGKIJZE",
+authDomain:"uyedbead.firebaseapp.com",
+databaseURL:"https://uyedbead-default-rtdb.firebaseio.com/",
+projectId:"uyedbead",storageBucket:"uyedbead.firebasestorage.app",
+messagingSenderId:"16717948299",appId:"1:16717948299:web:51f8684046f12a04337b8e"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Variables
+let username=""; let timer=null; let secondsElapsed=0;
+
+// DOM
+const loginSection=document.getElementById("loginSection");
+const dashboardSection=document.getElementById("dashboardSection");
+const userDisplay=document.getElementById("userDisplay");
+const pointsDisplay=document.getElementById("pointsDisplay");
+const timerDisplay=document.getElementById("timer");
+const topList=document.getElementById("topList");
+const inboxList=document.getElementById("inboxList");
+const progressCircle=document.getElementById("progress");
+const pointSound=document.getElementById("pointSound");
+
+// تسجيل / دخول
+window.loginOrRegister=async function(){
+const uname=document.getElementById("usernameInput").value.trim();
+const email=document.getElementById("emailInput").value.trim();
+const pwd=document.getElementById("passwordInput").value.trim();
+const loginMsg=document.getElementById("loginMsg");
+if(!/^[A-Za-z0-9]+$/.test(uname)){loginMsg.textContent="❌ الاسم إنجليزي فقط"; return;}
+if(!uname||!email||!pwd){loginMsg.textContent="❌ أكمل الحقول"; return;}
+const userRef=ref(db,"users/"+uname);
+const snapshot=await get(userRef);
+if(snapshot.exists()){username=uname; loginMsg.textContent="✅ تم تسجيل الدخول"; openDashboard();}
+else{await set(userRef,{email:email,password:pwd,points:0,inbox:{}}); username=uname; loginMsg.textContent="🎉 تم إنشاء الحساب"; openDashboard();}
+};
+
+// فتح لوحة التحكم
+function openDashboard(){
+loginSection.classList.add("hidden");
+dashboardSection.classList.remove("hidden");
+userDisplay.textContent=username;
+loadPoints(); loadTopUsers(); loadInbox();
+updateBackground();
+}
+
+// جلسة الدراسة
+window.startSession=function(){
+if(timer) return alert("أنت تدرس بالفعل!");
+secondsElapsed=0;
+timer=setInterval(()=>{
+secondsElapsed++;
+const minutes=Math.floor(secondsElapsed/60);
+const seconds=secondsElapsed%60;
+timerDisplay.textContent=`${minutes}:${seconds.toString().padStart(2,"0")}`;
+updateProgress(secondsElapsed/3600*360);
+if(secondsElapsed===50*60){ if(confirm("💡 هل أنهيت التحدي؟")) addPoint();}
+if(secondsElapsed>=60*60){clearInterval(timer);timer=null; addPoint();alert("🎉 ساعة كاملة! تم إضافة نقطة");}
+},1000);
+};
+window.stopSession=function(){clearInterval(timer);timer=null;alert("تم إيقاف التحدي");};
+
+// تحديث الساعة الدائرية
+function updateProgress(deg){progressCircle.style.transform=`rotate(${deg}deg)`;}
+
+// إضافة نقطة
+function addPoint(){
+const userRef=ref(db,"users/"+username+"/points");
+get(userRef).then(snap=>{
+const current=snap.val()||0; update(ref(db,"users/"+username),{points:current+1});
+pointsDisplay.textContent=current+1;
+pointSound.play();
+updateBackground();
+});
+}
+
+// التوب اليومي
+function loadTopUsers(){
+const usersRef=ref(db,"users/");
+onValue(usersRef,snap=>{
+const users=snap.val()||{};
+const sorted=Object.entries(users).sort((a,b)=>b[1].points-a[1].points).slice(0,3);
+topList.innerHTML="";
+sorted.forEach(([name,data],i)=>{const div=document.createElement("div");div.className="topCard";div.textContent=`${i+1}. ${name} - نقاط: ${data.points}`; topList.appendChild(div);});
+});
+}
+
+// صندوق التحديات
+function loadInbox(){
+const inboxRef=ref(db,"users/"+username+"/inbox");
+onValue(inboxRef,snap=>{
+const inbox=snap.val()||{};
+inboxList.innerHTML="";
+Object.entries(inbox).forEach(([id,data])=>{
+const div=document.createElement("div"); div.className="inboxItem";
+div.textContent=`${data.from} تحدى عليك`;
+const acceptBtn=document.createElement("button"); acceptBtn.textContent="✔ قبول"; acceptBtn.onclick=()=>respondChallenge(id,true);
+const rejectBtn=document.createElement("button"); rejectBtn.textContent="✖ رفض"; rejectBtn.onclick=()=>respondChallenge(id,false);
+div.appendChild(acceptBtn); div.appendChild(rejectBtn);
+inboxList.appendChild(div);
+});
+});
+}
+
+// إرسال تحدي
+window.sendChallenge=function(){
+const friend=document.getElementById("friendInput").value.trim(); if(!friend) return alert("أدخل اسم صديق");
+const challengeRef=ref(db,"users/"+friend+"/inbox"); push(challengeRef,{from:username,status:"pending"}); alert("تم إرسال التحدي!");
+};
+
+// الرد على التحدي
+function respondChallenge(id,accept){
+const refCh=ref(db,`users/${username}/inbox/${id}`);
+update(refCh,{status:accept?"accepted":"rejected"});
+alert(accept?"✔ قبلت التحدي":"✖ رفضت التحدي");
+}
+
+// تحميل نقاط المستخدم
+function loadPoints(){
+const userRef=ref(db,"users/"+username+"/points");
+get(userRef).then(snap=>{pointsDisplay.textContent=snap.val()||0;});
+}
+
+// تحديث الخلفية ديناميكي حسب النقاط
+function updateBackground(){
+const points=parseInt(pointsDisplay.textContent)||0;
+const grad1=`hsl(${points*10%360},70%,10%)`;
+const grad2=`hsl(${points*10%360},70%,20%)`;
+document.body.style.background=`linear-gradient(135deg, ${grad1}, ${grad2})`;
+}
+</script>
+</body>
+</html>
