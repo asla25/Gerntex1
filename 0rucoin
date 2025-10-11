@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0rucoin — النسخة النهائية</title>
+<style>
+body { font-family: Arial, sans-serif; background:#121212; color:#eee; margin:0; padding:0;}
+.container { max-width:600px; margin:20px auto; padding:20px; background:#1e1e1e; border-radius:10px;}
+input, button { padding:10px; margin:5px 0; width:100%; border-radius:5px; border:none;}
+button { background:#ffcc00; color:#000; font-weight:bold; cursor:pointer;}
+.user-card { display:flex; align-items:center; justify-content:space-between; background:#2c2c2c; padding:10px; margin:5px 0; border-radius:5px;}
+.user-card img { width:40px; height:40px; border-radius:50%;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>0rucoin</h1>
+<div id="auth-section">
+<h3>تسجيل / تسجيل دخول</h3>
+<input type="email" id="email" placeholder="البريد الإلكتروني">
+<input type="password" id="password" placeholder="كلمة المرور">
+<button onclick="signUp()">تسجيل</button>
+<button onclick="signIn()">تسجيل دخول</button>
+</div>
+
+<div id="main-section" style="display:none;">
+<h3>مرحبا <span id="user-name"></span></h3>
+<input type="file" id="profile-img">
+<button onclick="uploadImage()">رفع صورة الحساب</button>
+
+<h3>رصيدك: <span id="balance">0</span> 0ru</h3>
+<input type="text" id="send-user" placeholder="اسم المستخدم المستلم">
+<input type="number" id="send-amount" placeholder="عدد العملات">
+<button onclick="sendCoin()">إرسال 0rucoin</button>
+
+<h3>الحسابات</h3>
+<div id="users-list"></div>
+<button onclick="signOut()">تسجيل خروج</button>
+</div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAZxPfxA3I9KBQQhmqhJzVW95kG08uavl4",
+  authDomain: "ourr-c410b.firebaseapp.com",
+  projectId: "ourr-c410b",
+  storageBucket: "ourr-c410b.firebasestorage.app",
+  messagingSenderId: "313270039197",
+  appId: "1:313270039197:web:311bd4ab0c1e23fc42da74",
+  measurementId: "G-B4FQWDBWS2"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+let currentUser = null;
+
+// التسجيل
+function signUp(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  auth.createUserWithEmailAndPassword(email,password)
+    .then(res => {
+      currentUser = res.user;
+      db.collection('users').doc(currentUser.uid).set({
+        email: email,
+        name: email.split('@')[0],
+        balance: 5,
+        img: ''
+      });
+      showMain();
+    }).catch(e=>alert(e.message));
+}
+
+// تسجيل الدخول
+function signIn(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  auth.signInWithEmailAndPassword(email,password)
+    .then(res => {
+      currentUser = res.user;
+      showMain();
+    }).catch(e=>alert(e.message));
+}
+
+// تسجيل الخروج
+function signOut(){
+  auth.signOut();
+  currentUser = null;
+  document.getElementById('auth-section').style.display='block';
+  document.getElementById('main-section').style.display='none';
+}
+
+// عرض الصفحة الرئيسية
+function showMain(){
+  document.getElementById('auth-section').style.display='none';
+  document.getElementById('main-section').style.display='block';
+  document.getElementById('user-name').innerText = currentUser.email.split('@')[0];
+  loadUsers();
+  loadBalance();
+}
+
+// رفع صورة الحساب
+function uploadImage(){
+  const file = document.getElementById('profile-img').files[0];
+  if(!file) return alert('اختر صورة');
+  const ref = storage.ref('profiles/'+currentUser.uid+'.jpg');
+  ref.put(file).then(()=>ref.getDownloadURL().then(url=>{
+    db.collection('users').doc(currentUser.uid).update({img:url});
+    loadUsers();
+  }));
+}
+
+// تحميل الرصيد
+function loadBalance(){
+  db.collection('users').doc(currentUser.uid).onSnapshot(doc=>{
+    document.getElementById('balance').innerText = doc.data().balance.toFixed(1);
+  });
+}
+
+// تحميل جميع المستخدمين
+function loadUsers(){
+  db.collection('users').onSnapshot(snapshot=>{
+    const list = document.getElementById('users-list');
+    list.innerHTML='';
+    snapshot.forEach(doc=>{
+      const data = doc.data();
+      const div = document.createElement('div');
+      div.className='user-card';
+      div.innerHTML = `<span>${data.name} (${data.balance.toFixed(1)} 0ru)</span>
+      <img src="${data.img || 'https://via.placeholder.com/40'}">`;
+      list.appendChild(div);
+    });
+  });
+}
+
+// إرسال العملات
+function sendCoin(){
+  const toName = document.getElementById('send-user').value;
+  const amount = parseFloat(document.getElementById('send-amount').value);
+  if(isNaN(amount)||amount<=0) return alert('ادخل رقم صالح');
+  db.collection('users').where('name','==',toName).get().then(res=>{
+    if(res.empty) return alert('المستخدم غير موجود');
+    const doc = res.docs[0];
+    const toId = doc.id;
+    db.collection('users').doc(currentUser.uid).get().then(sender=>{
+      const senderBalance = sender.data().balance;
+      if(senderBalance<amount) return alert('رصيدك لا يكفي');
+      db.collection('users').doc(currentUser.uid).update({balance: senderBalance-amount});
+      db.collection('users').doc(toId).update({balance: doc.data().balance+amount});
+      alert('تم الإرسال بنجاح');
+    });
+  });
+}
+
+</script>
+</body>
+</html>
